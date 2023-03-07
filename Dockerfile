@@ -18,6 +18,7 @@ RUN mkdir -p /build/cloud-director-named-disk-csi-driver && \
 FROM ghcr.io/ricardo-larosa/photon4:4.0-GA
 
 # udev is to get scsi_id, e2fsprogs is for mkfs.ext4
+RUN tdnf install -y nvme-cli 
 RUN tdnf install -y e2fsprogs
 RUN tdnf install -y udev
 

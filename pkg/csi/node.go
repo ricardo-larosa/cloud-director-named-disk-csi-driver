@@ -546,6 +546,13 @@ func (ns *nodeService) getDiskPathOld(ctx context.Context, vmFullName string, di
 }
 
 func (ns *nodeService) getDiskPath(ctx context.Context, vmFullName string, diskUUID string) (string, error) {
+	nvmeDeviceCmd, err := exec.Command("nvme", "list", "-o", "json").Output()
+	if err != nil {
+		klog.Infof("Error running nvme command: %s\n", err)
+	}
+	klog.Infof("NVME: ", string(nvmeDeviceCmd))
+
+	path := "/dev/"
 	block, err := ghw.Block()
 	klog.Infof("Block Info: ", block.YAMLString())
 	if err != nil {
@@ -555,7 +562,7 @@ func (ns *nodeService) getDiskPath(ctx context.Context, vmFullName string, diskU
 	for _, disk := range block.Disks {
 		if disk.SerialNumber == hexDiskUUID {
 			klog.Infof("Obtained matching disk [%s] with [%s] controller\n", disk.Name, disk.StorageController)
-			return "" + disk.Name, nil
+			return path + disk.Name, nil
 		}
 	}
 
