@@ -17,6 +17,7 @@ import (
 	"github.com/vmware/cloud-director-named-disk-csi-driver/pkg/util"
 
 	"github.com/akutz/gofsutil"
+	"github.com/anatol/smart.go"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/jaypipes/ghw"
 	"golang.org/x/sys/unix"
@@ -546,17 +547,44 @@ func (ns *nodeService) getDiskPathOld(ctx context.Context, vmFullName string, di
 }
 
 func (ns *nodeService) getDiskPath(ctx context.Context, vmFullName string, diskUUID string) (string, error) {
-	path := "/dev/"
 	block, err := ghw.Block()
 	klog.Infof("Block Info: ", block.YAMLString())
 	if err != nil {
-		return path, fmt.Errorf("error getting block storage info: %w", err)
+		return "", fmt.Errorf("error getting block storage info: %w", err)
 	}
 	hexDiskUUID := strings.ReplaceAll(diskUUID, "-", "")
 	for _, disk := range block.Disks {
 		if disk.SerialNumber == hexDiskUUID {
 			klog.Infof("Obtained matching disk [%s] with [%s] controller\n", disk.Name, disk.StorageController)
-			return path + disk.Name, nil
+			return "" + disk.Name, nil
+		}
+	}
+
+	for _, disk := range block.Disks {
+		path := "/dev/" + disk.Name
+		dev, err := smart.Open(path)
+		if err != nil {
+			// some devices (like dmcrypt) do not support SMART interface
+
+			klog.Infof("error reading SMART ", err)
+			continue
+		}
+		defer dev.Close()
+
+		switch sm := dev.(type) {
+		case *smart.SataDevice:
+		case *smart.ScsiDevice:
+			_, _ = sm.Capacity()
+		case *smart.NVMeDevice:
+			c, nss, err := sm.Identify()
+			if err != nil {
+				return "", fmt.Errorf("error reading SMART: %v", err)
+			}
+			klog.Info(fmt.Println(c))
+			klog.Info(fmt.Println(nss))
+
+			// klog.Info()
+			// klog.Infof("NVME serial number: [%s], model number %s, firmware %s ", c.SerialNumber(), c.ModelNumber(), c.FirmwareRev())
 		}
 	}
 

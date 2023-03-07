@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.8.1
 	github.com/thecodeteam/gofsutil v0.1.2 // indirect
 	github.com/vmware/cloud-provider-for-cloud-director v0.0.0-20230223225414-a1a149d80f32
 	github.com/vmware/go-vcloud-director/v2 v2.14.0-rc.3
@@ -16,13 +16,14 @@ require (
 	golang.org/x/sys v0.5.0
 	google.golang.org/grpc v1.38.0
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/component-base v0.22.1
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.10.0 // indirect
 )
 
 require (
+	github.com/anatol/smart.go v0.0.0-20230124172926-9f85b84d961e
 	github.com/jaypipes/ghw v0.10.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
