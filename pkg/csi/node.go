@@ -8,15 +8,17 @@ package csi
 import (
 	"context"
 	"fmt"
-	"github.com/vmware/cloud-director-named-disk-csi-driver/pkg/util"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/vmware/cloud-director-named-disk-csi-driver/pkg/util"
+
 	"github.com/akutz/gofsutil"
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/jaypipes/ghw"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -477,16 +479,22 @@ func (ns *nodeService) rescanDiskInVM(ctx context.Context) error {
 // getDiskPath looks for a device corresponding to vmName:diskName as stored in vSphere. It
 // enumerates devices in /dev/disk/by-path and returns a device with UUID matching the scsi UUID.
 // It needs disk.enableUUID to be set for the VM.
-func (ns *nodeService) getDiskPath(ctx context.Context, vmFullName string, diskUUID string) (string, error) {
+func (ns *nodeService) getDiskPath(ctx context.Context, vmFullName string, diskUUID string) (string, error) { //modify this
 
 	if diskUUID == "" {
 		return "", fmt.Errorf("diskUUID should not be an empty string")
 	}
 
+	_, err := ns.getDiskPath2(ctx, vmFullName, diskUUID)
+	if err != nil {
+		return "", err
+	}
+
 	hexDiskUUID := strings.ReplaceAll(diskUUID, "-", "")
+	klog.Infof("looking for matches with hexDiskUUID = %s", hexDiskUUID)
 
 	guestDiskPath := ""
-	err := filepath.Walk(DevDiskPath, func(path string, fi os.FileInfo, err error) error {
+	err = filepath.Walk(DevDiskPath, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -541,6 +549,32 @@ func (ns *nodeService) getDiskPath(ctx context.Context, vmFullName string, diskU
 
 	klog.Infof("Obtained matching disk [%s]", guestDiskPath)
 	return guestDiskPath, nil
+}
+
+func (ns *nodeService) getDiskPath2(ctx context.Context, vmFullName string, diskUUID string) (path string, err error) {
+	block, err := ghw.Block()
+	if err != nil {
+		return path, fmt.Errorf("error getting block storage info: %w", err)
+	}
+	header := "# GHW: "
+	hexDiskUUID := strings.ReplaceAll(diskUUID, "-", "")
+	klog.Infof("%s %v\n", header, block)
+
+	for _, disk := range block.Disks {
+		klog.Infof("%s %v\n", header, disk.Name)
+		for _, part := range disk.Partitions {
+			if part.UUID != "" {
+				hexPartUUID := strings.ReplaceAll(part.UUID, "-", "")
+				if hexPartUUID == hexDiskUUID {
+					klog.Infof("%s - [ Name: %v, Label: %v, UUID: %v] Matching\n", header, part.Name, part.Label, part.UUID)
+				} else {
+					klog.Infof("%s - Name: %v, Label: %v, UUID: %v\n", header, part.Name, part.Label, part.UUID)
+				}
+			}
+		}
+	}
+
+	return path, nil
 }
 
 func (ns *nodeService) isVolumeReadOnly(capability *csi.VolumeCapability) bool {

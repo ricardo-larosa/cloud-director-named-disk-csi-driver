@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
-
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	stov1 "k8s.io/api/storage/v1"
@@ -16,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
+	"time"
 )
 
 var (
@@ -332,7 +331,7 @@ func getWorkerNodes(ctx context.Context, k8sClient *kubernetes.Clientset) ([]api
 	return workerNodes, nil
 }
 
-func createStorageClass(ctx context.Context, k8sClient *kubernetes.Clientset, scName string, reclaimPolicy apiv1.PersistentVolumeReclaimPolicy, storageProfile, busType string) (*stov1.StorageClass, error) {
+func createStorageClass(ctx context.Context, k8sClient *kubernetes.Clientset, scName string, reclaimPolicy apiv1.PersistentVolumeReclaimPolicy, storageProfile string) (*stov1.StorageClass, error) {
 	if scName == "" {
 		return nil, ResourceNameNull
 	}
@@ -348,7 +347,6 @@ func createStorageClass(ctx context.Context, k8sClient *kubernetes.Clientset, sc
 		Parameters: map[string]string{
 			"storageProfile": storageProfile,
 			"filesystem":     "ext4",
-			"busType":        busType,
 		},
 	}
 	newSC, err := k8sClient.StorageV1().StorageClasses().Create(ctx, sc, metav1.CreateOptions{})
@@ -374,7 +372,7 @@ func createNameSpace(ctx context.Context, nsName string, k8sClient *kubernetes.C
 	return ns, nil
 }
 
-func createPV(ctx context.Context, k8sClient *kubernetes.Clientset, persistentVolumeName string, storageClass string, storageProfile string, storageSize, busType string, reclaimPolicy apiv1.PersistentVolumeReclaimPolicy) (*apiv1.PersistentVolume, error) {
+func createPV(ctx context.Context, k8sClient *kubernetes.Clientset, persistentVolumeName string, storageClass string, storageProfile string, storageSize string, reclaimPolicy apiv1.PersistentVolumeReclaimPolicy) (*apiv1.PersistentVolume, error) {
 	if persistentVolumeName == "" {
 		return nil, ResourceNameNull
 	}
@@ -397,7 +395,8 @@ func createPV(ctx context.Context, k8sClient *kubernetes.Clientset, persistentVo
 					FSType:       "ext4",
 					VolumeHandle: persistentVolumeName,
 					VolumeAttributes: map[string]string{
-						"busType":        busType,
+						"busSubType":     "VirtualSCSI",
+						"busType":        "SCSI",
 						"filesystem":     "ext4",
 						"storageProfile": storageProfile,
 					},
@@ -533,9 +532,9 @@ func createLoadBalancerService(ctx context.Context, k8sClient *kubernetes.Client
 			Labels:      labels,
 		},
 		Spec: apiv1.ServiceSpec{
-			Ports:          servicePort,
-			Selector:       labels,
-			Type:           "LoadBalancer",
+			Ports:    servicePort,
+			Selector: labels,
+			Type:     "LoadBalancer",
 			LoadBalancerIP: loadBalancerIP,
 		},
 	}
