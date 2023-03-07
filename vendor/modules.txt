@@ -4,9 +4,6 @@ github.com/StackExchange/wmi
 # github.com/akutz/gofsutil v0.1.2
 ## explicit
 github.com/akutz/gofsutil
-# github.com/anatol/smart.go v0.0.0-20230124172926-9f85b84d961e
-## explicit; go 1.17
-github.com/anatol/smart.go
 # github.com/antihax/optional v1.0.0
 ## explicit; go 1.13
 github.com/antihax/optional

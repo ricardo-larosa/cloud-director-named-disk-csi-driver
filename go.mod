@@ -23,7 +23,6 @@ require (
 )
 
 require (
-	github.com/anatol/smart.go v0.0.0-20230124172926-9f85b84d961e
 	github.com/jaypipes/ghw v0.10.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
