@@ -546,6 +546,19 @@ func (ns *nodeService) getDiskPathOld(ctx context.Context, vmFullName string, di
 }
 
 func (ns *nodeService) getDiskPath(ctx context.Context, vmFullName string, diskUUID string) (string, error) {
+
+	lsblkCmd, err := exec.Command("lsblk").Output()
+	if err != nil {
+		klog.Infof("Error running lsblk command: %s\n", err)
+	}
+	klog.Infof("lsblk: ", string(lsblkCmd))
+
+	fdiskCmd, err := exec.Command("fdisk", "-l").Output()
+	if err != nil {
+		klog.Infof("Error running lsblk command: %s\n", err)
+	}
+	klog.Infof("fdisk: ", string(fdiskCmd))
+
 	nvmeDeviceCmd, err := exec.Command("nvme", "list", "-o", "json").Output()
 	if err != nil {
 		klog.Infof("Error running nvme command: %s\n", err)
@@ -567,6 +580,42 @@ func (ns *nodeService) getDiskPath(ctx context.Context, vmFullName string, diskU
 	}
 
 	return "", fmt.Errorf("could not find matching disks")
+}
+
+func readPCI() {
+	pci, err := ghw.PCI()
+	if err != nil {
+		klog.Infof("Error getting PCI info: %v", err)
+	}
+	klog.Infof("host PCI devices:\n")
+	klog.Infof("====================================================")
+
+	for _, device := range pci.Devices {
+
+		deviceInfo := pci.GetDevice(device.Address)
+		if deviceInfo == nil {
+			klog.Infof("could not retrieve PCI device information for %s\n", device.Address)
+			return
+		}
+
+		vendor := deviceInfo.Vendor
+		klog.Infof("Vendor: %s [%s]\n", vendor.Name, vendor.ID)
+		product := deviceInfo.Product
+		klog.Infof("Product: %s [%s]\n", product.Name, product.ID)
+		subsystem := deviceInfo.Subsystem
+		subvendor := pci.Vendors[subsystem.VendorID]
+		subvendorName := "UNKNOWN"
+		if subvendor != nil {
+			subvendorName = subvendor.Name
+		}
+		klog.Infof("Subsystem: %s [%s] (Subvendor: %s)\n", subsystem.Name, subsystem.ID, subvendorName)
+		class := deviceInfo.Class
+		klog.Infof("Class: %s [%s]\n", class.Name, class.ID)
+		subclass := deviceInfo.Subclass
+		klog.Infof("Subclass: %s [%s]\n", subclass.Name, subclass.ID)
+		progIface := deviceInfo.ProgrammingInterface
+		klog.Infof("Programming Interface: %s [%s]\n", progIface.Name, progIface.ID)
+	}
 }
 
 func (ns *nodeService) isVolumeReadOnly(capability *csi.VolumeCapability) bool {
